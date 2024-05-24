@@ -38,7 +38,7 @@ def update_templates(hostname_port, truststore_cert):
         with open(template, 'w') as file:
             file.write(content)
 
-def prompt_for_initial_settings():
+def initialize():
     hostname_port = input("Enter hostname:port (SSL enforced): ").strip()
     print("Available certificates in /opt/tak/certs/files:")
     cert_files = [f for f in os.listdir('/opt/tak/certs/files') if f.endswith('.p12')]
@@ -55,6 +55,7 @@ def display_menu():
     print("1. Create Data Package with existing User Certificate")
     print("2. Create New User Certificate & Data Package")
     print("B. Build ATAK Server")
+    print("Initialize Toolbox Manifests")
     print("Q. Quit Script")
 
 def pack_only():
@@ -126,11 +127,6 @@ def main():
     # Check directory permissions
     #check_permissions()
 
-    # Ask if the user wants to set up initial settings
-    initial_setup = input("Do you want to set up initial settings? (y/N): ").strip().lower() == 'y'
-    if initial_setup:
-        prompt_for_initial_settings()
-
     while True:
         # Clear the screen
         subprocess.run("clear", shell=True)
@@ -173,13 +169,15 @@ def main():
         # Display menu
         display_menu()
 
-        choice = input("Enter your choice (1-2, B, or Q): ").upper()
+        choice = input("Enter your choice (1-2, B, I, or Q): ").upper()
         if choice == '1':
             pack_only()
         elif choice == '2':
             cert_pack() 
         elif choice == 'B':
             ATAK_Build() 
+        elif choice == 'I':
+            initialize() 
         elif choice == 'Q':
             print("Quitting script...")
             exit()
