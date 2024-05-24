@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import socket
+import uuid
 
 APP_VERSION = "1.0.0"
 BUILD_DATE = "May 2024"
