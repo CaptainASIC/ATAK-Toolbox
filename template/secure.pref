@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='ASCII' standalone='yes'?>
+<preferences>
+  <preference version="1" name="cot_streams">
+    <entry key="count" class="class java.lang.Integer">1</entry>
+    <entry key="description0" class="class java.lang.String">##username## @ TAK Server</entry>
+    <entry key="enabled0" class="class java.lang.Boolean">true</entry>
+    <entry key="connectString0" class="class java.lang.String"><HOSTNAME>##hostname##</entry>
+    <entry key="caLocation0" class="class java.lang.String">cert/##caLocation##</entry>
+    <entry key="caPassword0" class="class java.lang.String">atakatak</entry>
+    <entry key="useAuth0" class="class java.lang.Boolean">true</entry>
+    <entry key="cacheCreds0" class="class java.lang.String">Cache credentials</entry>
+    <entry key="enrollForCertificateWithTrust0" class="class java.lang.Boolean">true</entry>
+  </preference>
+  <preference version="1" name="com.atakmap.app_preferences">
+    <entry key="enrollForCertificateWithTrust0" class="class java.lang.Boolean">true</entry>
+    <entry key="displayServerConnectionWidget" class="class java.lang.Boolean">true</entry>
+  </preference>
+</preferences>
