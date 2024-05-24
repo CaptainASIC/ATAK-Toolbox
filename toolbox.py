@@ -12,7 +12,7 @@ def check_permissions():
     certs_dir = "/opt/tak/certs/"
     files_dir = os.path.join(certs_dir, "files")
 
-    if not (os.access(certs_dir, os.R_OK | os.W_OK) and os.access(files_dir, os.R_OK | os.W.OK)):
+    if not (os.access(certs_dir, os.R_OK | os.W_OK) and os.access(files_dir, os.R_OK | os.W_OK)):
         print("ATAK directories not accessible")
         exit(1)
 
