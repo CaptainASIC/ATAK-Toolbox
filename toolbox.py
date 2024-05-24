@@ -1,7 +1,7 @@
 import os
 import shutil
 import subprocess
-import uuid
+import socket
 
 APP_VERSION = "1.0.0"
 BUILD_DATE = "May 2024"
@@ -13,6 +13,78 @@ def check_permissions():
     if not (os.access(certs_dir, os.R_OK | os.W_OK) and os.access(files_dir, os.R_OK | os.W.OK)):
         print("ATAK directories not accessible")
         exit(1)
+
+def update_core_config(hostname, truststore_root_ca):
+    core_config_path = 'CoreConfig.xml'
+    with open(core_config_path, 'r') as file:
+        content = file.read()
+
+    content = content.replace('##SERVER##', hostname)
+    content = content.replace('##truststore-root-ca##', truststore_root_ca)
+
+    with open(core_config_path, 'w') as file:
+        file.write(content)
+
+    # Move the edited CoreConfig.xml to /opt/tak/
+    shutil.move(core_config_path, '/opt/tak/CoreConfig.xml')
+
+def install_checkpolicy():
+    subprocess.run(['yum', 'install', '-y', 'checkpolicy'], check=True)
+
+def modify_selinux_script():
+    selinux_script_path = '/opt/tak/apply-selinux.sh'
+    with open(selinux_script_path, 'r') as file:
+        lines = file.readlines()
+
+    if 'sudo' in lines[11]:
+        lines[11] = lines[11].replace('sudo ', '')
+
+    with open(selinux_script_path, 'w') as file:
+        file.writelines(lines)
+
+def run_selinux_script():
+    subprocess.run(['bash', '/opt/tak/apply-selinux.sh'], check=True)
+
+def setup_database():
+    subprocess.run(['bash', '/opt/tak/db-utils/takserver-setup-db.sh'], check=True)
+
+def manage_takserver_service(action):
+    subprocess.run(['systemctl', action, 'takserver'], check=True)
+
+def ATAK_Build():
+    # Prompt for TAK server hostname
+    detected_hostname = socket.gethostname()
+    hostname = input(f"Enter TAK server hostname [{detected_hostname}]: ").strip() or detected_hostname
+
+    # Prompt for TrustStore Root CA Name
+    truststore_root_ca = input("Enter TrustStore Root CA Name: ").strip()
+
+    # Run makeRootCa.sh with the provided CA name
+    subprocess.run(['/opt/tak/makeRootCa.sh', '--ca-name', truststore_root_ca], check=True)
+
+    # Create a server certificate using the provided hostname
+    subprocess.run(['/opt/tak/makeCert.sh', 'server', hostname], check=True)
+
+    # Update CoreConfig.xml
+    update_core_config(hostname, truststore_root_ca)
+
+    # Install checkpolicy
+    install_checkpolicy()
+
+    # Modify apply-selinux.sh script
+    modify_selinux_script()
+
+    # Run apply-selinux.sh script
+    run_selinux_script()
+
+    # Setup database
+    setup_database()
+
+    # Manage takserver service
+    manage_takserver_service('daemon-reload')
+    manage_takserver_service('enable')
+    manage_takserver_service('start')
+    manage_takserver_service('restart')
 
 def update_templates(hostname_port, truststore_cert):
     # Force the :ssl entry
@@ -146,9 +218,13 @@ def cert_pack():
     # Call the create_data_package function to build the data package
     create_data_package(user, certname, cert_file_p12, itak, full)
 
-def ATAK_Build():
-    print("Functionality to Build ATAK Server.")
-    # Implement your logic here
+def display_menu():
+    print("Menu:")
+    print("1. Create Data Package with existing User Certificate")
+    print("2. Create New User Certificate & Data Package")
+    print("B. Build ATAK Server")
+    print("I. Initialize Toolbox Manifests")
+    print("Q. Quit Script")
 
 def main():
     check_permissions()
