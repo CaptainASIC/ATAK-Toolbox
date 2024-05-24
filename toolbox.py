@@ -1,7 +1,6 @@
 import os
 import shutil
 import subprocess
-import argparse
 import uuid
 
 APP_VERSION = "1.0.0"
@@ -11,7 +10,7 @@ def check_permissions():
     certs_dir = "/opt/tak/certs/"
     files_dir = os.path.join(certs_dir, "files")
 
-    if not (os.access(certs_dir, os.R_OK | os.W_OK) and os.access(files_dir, os.R_OK | os.W_OK)):
+    if not (os.access(certs_dir, os.R_OK | os.W_OK) and os.access(files_dir, os.R_OK | os.W.OK)):
         print("ATAK directories not accessible")
         exit(1)
 
@@ -50,24 +49,7 @@ def initialize():
 
     update_templates(hostname_port, truststore_cert)
 
-def display_menu():
-    print("Menu:")
-    print("1. Create Data Package with existing User Certificate")
-    print("2. Create New User Certificate & Data Package")
-    print("B. Build ATAK Server")
-    print("Initialize Toolbox Manifests")
-    print("Q. Quit Script")
-
-def pack_only():
-    # Prompt for required values
-    user = input("Enter desired username: ").strip()
-    zipname = input("Enter name for data package zip: ").strip()
-    cert = input("Enter certificate file with path: ").strip()
-    itak = input("Enable iTAK option? (y/N): ").strip().lower() == 'y'
-    full = input("Enable full option? (y/N): ").strip().lower() == 'y'
-
-    certfile = os.path.basename(cert)
-
+def create_data_package(user, zipname, certfile, itak, full):
     if not full:
         shutil.copytree('template', zipname)
         with open(os.path.join(zipname, 'secure.pref'), 'r') as file:
@@ -89,7 +71,7 @@ def pack_only():
 
         with open(os.path.join(zipname, 'secure.pref'), 'r') as file:
             secure_pref = file.read()
-        secure_pref = secure_pref.replace('##usercert##', certfile)
+        secure_pref = secure_pref.replace('##caLocation##', certfile)
         secure_pref = secure_pref.replace('##username##', user)
 
         with open(os.path.join(zipname, 'secure.pref'), 'w') as file:
@@ -97,7 +79,7 @@ def pack_only():
 
         with open(os.path.join(zipname, 'MANIFEST', 'manifest.xml'), 'r') as file:
             manifest = file.read()
-        manifest = manifest.replace('##usercert##', certfile)
+        manifest = manifest.replace('##caLocation##', certfile)
         manifest = manifest.replace('##username##', user)
         manifest = manifest.replace('##uuid##', str(uuid.uuid4()))
 
@@ -115,17 +97,61 @@ def pack_only():
 
     shutil.rmtree(zipname)
 
+def pack_only():
+    # Prompt for required values
+    user = input("Enter desired username: ").strip()
+    zipname = input("Enter name for data package zip: ").strip()
+    cert = input("Enter certificate file with path: ").strip()
+    itak = input("Enable iTAK option? (y/N): ").strip().lower() == 'y'
+    full = input("Enable full option? (y/N): ").strip().lower() == 'y'
+
+    certfile = os.path.basename(cert)
+
+    create_data_package(user, zipname, certfile, itak, full)
+
 def cert_pack():
-    print("Functionality to create New User Certificate & Data Package.")
-    # Implement your logic here
+    user = input("Enter desired username: ").strip()
+    certname = input("Enter name for certificate file: ").strip()
+    itak = input("Enable iTAK option? (y/N): ").strip().lower() == 'y'
+    full = input("Enable full option? (y/N): ").strip().lower() == 'y'
+
+    certs_dir = "/opt/tak/certs"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cert_env_script = os.path.join(certs_dir, "cert-env.sh")
+    make_cert_script = os.path.join(certs_dir, "makeCert.sh")
+    user_manager_jar = "/opt/tak/utils/UserManager.jar"
+    cert_file_pem = os.path.join(certs_dir, "files", f"{certname}.pem")
+    cert_file_p12 = os.path.join(certs_dir, "files", f"{certname}.p12")
+
+    # Change to /opt/tak/certs directory
+    os.chdir(certs_dir)
+
+    # Source cert-env.sh
+    subprocess.run(["bash", "-c", f"source {cert_env_script}"])
+
+    # Run makeCert.sh to generate the certificate
+    subprocess.run(["bash", make_cert_script, "client", certname])
+
+    # Modify the user to use the new certificate
+    subprocess.run(["java", "-jar", user_manager_jar, "usermod", "-c", cert_file_pem, user])
+
+    # Check if the .p12 certificate file was created
+    if not os.path.isfile(cert_file_p12):
+        print(f"Cert file ({cert_file_p12}) does not exist!")
+        return
+
+    # Change back to the original script directory
+    os.chdir(script_dir)
+
+    # Call the create_data_package function to build the data package
+    create_data_package(user, certname, cert_file_p12, itak, full)
 
 def ATAK_Build():
     print("Functionality to Build ATAK Server.")
     # Implement your logic here
 
 def main():
-    # Check directory permissions
-    #check_permissions()
+    check_permissions()
 
     while True:
         # Clear the screen
@@ -133,35 +159,33 @@ def main():
 
         # Color codes
         dark_orange = "\033[38;5;202m"
-        dark_red = "\033[38;5;160m"
-        green = "\033[38;5;40m]"
         reset_color = "\033[0m"
 
         # Banner with ASCII art centered and bordered
         banner_text = f"""\
-    {dark_orange}+{'-' * 84}+{reset_color}
-    {dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
-    {dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
-    {dark_orange}|{' █████╗ ████████╗ █████╗ ██╗  ██╗'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'██╔══██╗╚══██╔══╝██╔══██╗██║ ██╔╝'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'███████║   ██║   ███████║█████╔╝ '.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'██╔══██║   ██║   ██╔══██║██╔═██╗ '.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'██║  ██║   ██║   ██║  ██║██║  ██╗'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
-    {dark_orange}|{'████████╗ ██████╗  ██████╗ ██╗     ██████╗  ██████╗ ██╗  ██╗'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔══██╗██╔═══██╗╚██╗██╔╝'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'   ██║   ██║   ██║██║   ██║██║     ██████╔╝██║   ██║ ╚███╔╝ '.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'   ██║   ██║   ██║██║   ██║██║     ██╔══██╗██║   ██║ ██╔██╗ '.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'   ██║   ╚██████╔╝╚██████╔╝███████╗██████╔╝╚██████╔╝██╔╝ ██╗'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{'   ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
-    {dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
-    {dark_orange}|{reset_color}{'Created by Captain ASIC'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{reset_color}{f'Version {APP_VERSION}, {BUILD_DATE}'.center(84)}{dark_orange}|{reset_color}
-    {dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
-    {dark_orange}+{'-' * 84}+{reset_color}
-    \n
+{dark_orange}+{'-' * 84}+{reset_color}
+{dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
+{dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
+{dark_orange}|{' █████╗ ████████╗ █████╗ ██╗  ██╗'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'██╔══██╗╚══██╔══╝██╔══██╗██║ ██╔╝'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'███████║   ██║   ███████║█████╔╝ '.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'██╔══██║   ██║   ██╔══██║██╔═██╗ '.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'██║  ██║   ██║   ██║  ██║██║  ██╗'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
+{dark_orange}|{'████████╗ ██████╗  ██████╗ ██╗     ██████╗  ██████╗ ██╗  ██╗'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔══██╗██╔═══██╗╚██╗██╔╝'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'   ██║   ██║   ██║██║   ██║██║     ██████╔╝██║   ██║ ╚███╔╝ '.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'   ██║   ██║   ██║██║   ██║██║     ██╔══██╗██║   ██║ ██╔██╗ '.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'   ██║   ╚██████╔╝╚██████╔╝███████╗██████╔╝╚██████╔╝██╔╝ ██╗'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{'   ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
+{dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
+{dark_orange}|{reset_color}{'Created by Captain ASIC'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{reset_color}{f'Version {APP_VERSION}, {BUILD_DATE}'.center(84)}{dark_orange}|{reset_color}
+{dark_orange}|{reset_color}{' ' * 84}{dark_orange}|{reset_color}
+{dark_orange}+{'-' * 84}+{reset_color}
+\n
         """
         # Print centered banner
         print(banner_text)
@@ -173,16 +197,16 @@ def main():
         if choice == '1':
             pack_only()
         elif choice == '2':
-            cert_pack() 
+            cert_pack()
         elif choice == 'B':
-            ATAK_Build() 
+            ATAK_Build()
         elif choice == 'I':
-            initialize() 
+            initialize()
         elif choice == 'Q':
             print("Quitting script...")
-            exit()
+            exit(0)
         else:
-            print("Invalid choice. Please enter 1, 2, B,or Q.")
+            print("Invalid choice. Please enter 1, 2, B, I, or Q.")
 
 if __name__ == "__main__":
     main()
