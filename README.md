@@ -2,6 +2,8 @@
 
 The ATAK Toolbox is a set of scripts and utilities to assist in ATAK server deployments. Your TAK server should be built on Rocky, Fedora, or RHEL for compatibility with this Toolbox.
 
+![screenshot of ATAK Toolbox](screenshot.png "ATAK Toolbox")
+
 ## Installation
 
 ### Dependencies
